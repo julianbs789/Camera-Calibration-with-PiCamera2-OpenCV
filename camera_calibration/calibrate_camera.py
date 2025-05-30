@@ -20,12 +20,14 @@ from cv2 import (
     imread, imwrite, imshow, waitKey, destroyAllWindows, cvtColor, undistort, findChessboardCorners, cornerSubPix,
     drawChessboardCorners, calibrateCamera, getOptimalNewCameraMatrix, projectPoints, norm
 )
+import cv2
 from numpy import mgrid, zeros, float32, asarray
 from glob import glob
 from time import sleep
 from os import getcwd, path, makedirs
-from argparse import ArgumentParser
-from json import JSONEncoder, dump
+from sys import exit
+from argparse import ArgumentParser, BooleanOptionalAction
+from json import dump
 
 #### Parser safety request #####
 # Fetch script arguments and define directory names
@@ -36,6 +38,8 @@ parser.add_argument("--savedir", required=True, help = "Folder where the undisto
                     default = "undistorted_images")
 parser.add_argument("--board", help = "Dimensions of your checkerboard on which the calibration shall be applied.",
                     default = "9x6")
+parser.add_argument('--roi', default=False, help="Optimal rectangle outline for good pixels", action=BooleanOptionalAction)
+
 args = parser.parse_args()
 
 # Check if dimensions are specified correct
@@ -109,6 +113,9 @@ for fname in images:
     
 destroyAllWindows()
 
+if not len(objpoints):
+    print('Not enough images returned true!!')
+    exit(-1)
 
 #### Calibrate camera, show parameters and show the accuracy ####
 # Apply the calibrate algorithm and print them
@@ -162,9 +169,11 @@ for fname in images:
     img_dist = imread(fname)  
     # Method 1: Compensate lens distortion (Renunciation of remapping method 2)
     dst = undistort(img_dist, mtx, dist, None, optimal_camera_matrix)
-    # Crop the image. Uncomment these following two lines to remove black lines on the edge of the undistorted image
-    x, y, w, h = roi
-    dst = dst[y:y+h, x:x+w]
+    # Crop the image.
+    if args.roi:
+        x, y, w, h = roi
+        dst = dst[y:y+h, x:x+w]
+    
     filename = "".join([save_name, "_", str(imgnum), ".png"])
     savepath = path.join(dirpath, filename)
     imwrite(savepath, dst)

@@ -20,8 +20,6 @@
 from picamera2 import Picamera2
 from os import getcwd, path, makedirs
 from argparse import ArgumentParser
-from keyboard import is_pressed
-from termios import tcflush, TCIOFLUSH
 from sys import stdin, exit
 from libcamera import controls
 from json import load
@@ -37,7 +35,7 @@ parser = ArgumentParser()
 parser.add_argument("--imgdir", help = "Folder where the taken images get saved. If you not specify there will be created one automatically.",
                     default = "images")
 parser.add_argument("--res", help = "Required resolution in WxH. To avoid erros find out about the supported resolutions of your camera model.",
-                       default = "1920x1080")
+                       default = "640x480")
 
 args = parser.parse_args()
 dirname = args.imgdir
@@ -67,7 +65,7 @@ while 1:
 #### Initialize camera #####
 # Load the tuning for the RPi IR-Cut camera.
 # Renamed the original file (ov5647.json) to custom.
-tuning_file = Picamera2.load_tuning_file("ov5647_custom.json")
+tuning_file = Picamera2.load_tuning_file("ov5647.json")
 # Call picamera2 constructor and pass loaded tuning file.
 picam2 = Picamera2(tuning=tuning_file)
 # Set options for saving images
@@ -83,7 +81,7 @@ print("\nPress 'p' to take an image, they will be saved in the '{}' folder.".for
 print("To quit the application press 'q'.\n")
 
 # Create preview configuration with denoising
-picam2.configure(picam2.create_preview_configuration(main={"format": "XRGB8888", "size": (1920, 1080)}, controls={"NoiseReductionMode":controls.draft.NoiseReductionModeEnum.HighQuality}))
+picam2.configure(picam2.create_preview_configuration(main={"format": "XRGB8888", "size": (imgW, imgH)}, controls={"NoiseReductionMode":controls.draft.NoiseReductionModeEnum.HighQuality}))
 picam2.start()
 
 # Setup the preview Window with OpenCV (PiCamera2 not compatible)
@@ -101,7 +99,11 @@ mtx = array(calibration_file["mtx"], dtype=float64)
 dist = array(calibration_file["dist"], dtype=float64)
 
 try:
-    while 1:
+    for i in range(10):
+            key = waitKey(1000)
+            if key == ord('q'):
+                break
+
             # request - faster?
             #request = picam2.capture_request()
             #array = request.make_array("main")
@@ -117,25 +119,13 @@ try:
             #dst = dst[y:y+h, x:x+w]
             
             imshow(winname, dst)
-       
-            if is_pressed("p"):
-                if key_flag is False:
-                    key_flag = True
-                    filename = "".join([dirname, "_", str(imgnum), ".png"])
-                    savepath = path.join(dirpath, filename)
-                    imwrite(savepath, dst)
-                    print("\rOpenCV image saved from request -> {}".format(filename))
-                    imgnum+=1
-                else:
-                    key_flag = False
-            #request.release() 
-            elif is_pressed("q"):
-                print("\r++++++++++++++++++++++++++++++++++++++++++++++")
-                print("\rInterruption: stop preview and close camera...")
-                break 
-     
+
+            filename = "".join([dirname, "_", str(imgnum), ".png"])
+            savepath = path.join(dirpath, filename)
+            imwrite(savepath, dst)
+            print("\rOpenCV image saved from request -> {}".format(filename))
+            imgnum += 1
 finally:
     destroyAllWindows()
     picam2.stop()
     picam2.close()
-    tcflush(stdin, TCIOFLUSH)
