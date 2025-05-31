@@ -92,11 +92,6 @@ resizeWindow(winname, 1000, 900)
 moveWindow(winname, 915, 72)
 startWindowThread()
 
-# Load the calibration file with params
-with open("calibrate_camera.json", "r") as f:
-    calibration_file = load(f)
-mtx = array(calibration_file["mtx"], dtype=float64)
-dist = array(calibration_file["dist"], dtype=float64)
 
 try:
     for i in range(10):
@@ -112,17 +107,15 @@ try:
             array = picam2.capture_array("main")
             new_cv_img = cvtColor(array, COLOR_RGBA2RGB)
             h, w = new_cv_img.shape[:2]
-            optimal_camera_matrix, roi = getOptimalNewCameraMatrix(mtx, dist, (w, h), 0, (w, h))
-            dst = undistort(new_cv_img, mtx, dist, None, optimal_camera_matrix)
             # hold the default image size (not cropping)
             #x, y, w, h = roi
             #dst = dst[y:y+h, x:x+w]
             
-            imshow(winname, dst)
+            imshow(winname, new_cv_img)
 
             filename = "".join([dirname, "_", str(imgnum), ".png"])
             savepath = path.join(dirpath, filename)
-            imwrite(savepath, dst)
+            imwrite(savepath, new_cv_img)
             print("\rOpenCV image saved from request -> {}".format(filename))
             imgnum += 1
 finally:
